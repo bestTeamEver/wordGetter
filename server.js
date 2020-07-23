@@ -14,18 +14,94 @@ const PORT = process.env.PORT !== undefined ? process.env.PORT : 3000;
 // super simple 'database'
 const database = [];
 
+const letterFrequencies = {
+  E: 0.1202,
+  T: 0.091,
+  A: 0.0812,
+  O: 0.0768,
+  I: 0.0731,
+  N: 0.0695,
+  S: 0.0628,
+  R: 0.0602,
+  H: 0.0592,
+  D: 0.0432,
+  L: 0.0398,
+  U: 0.0288,
+  C: 0.0271,
+  M: 0.0261,
+  F: 0.023,
+  Y: 0.0211,
+  W: 0.0209,
+  G: 0.0203,
+  P: 0.0182,
+  B: 0.0149,
+  V: 0.0111,
+  K: 0.0069,
+  X: 0.0017,
+  Q: 0.0011,
+  J: 0.001,
+  Z: 0.0007,
+};
+
+// get the characters for this round. accepts a number for number of characters to use
+function getRoundCharacters(numCharacters) {
+  const characters = [];
+
+  for (let i = 0; i < numCharacters; i++) {
+    characters.push(getValueFromLetterFreqs(Math.random()));
+  }
+
+  return characters;
+}
+
+// finds the appropiate letter from the frequency table (requires number to be between 0 and 1, otherwise only return 'Z')
+function getValueFromLetterFreqs(num) {
+  let sum = 0;
+  for (item in letterFrequencies) {
+    sum += letterFrequencies[item];
+    if (num < sum) {
+      return item;
+    }
+  }
+  return "Z"; // default return if doesn't work
+}
+
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
 
 /// start a session with a set of characters and preload possible words
-//query in form of: localhost:3000/start?letters=abcde
+//query in form of: localhost:3000/start?letters=number
 app.get("/start", (req, res) => {
   //get letters being used from the query
   let letters = req.query.letters;
+  scrapeWords(res, letters);
+
+  // //make call to dictionary api
+  // fetch(`https://www.anagrammer.com/word-unscrambler/${letters}`)
+  //   .then((response) => response.text())
+  //   .then((siteText) => {
+  //     const $ = cheerio.load(siteText);
+
+  //     let validWords = [];
+  //     // in the div with class = vissible-sm
+  //     $('div[class="vissible-sm"]')
+  //       //find the <a> tags in the elements with class = r
+  //       .find(".r > a")
+  //       //for each <a> tag push the text content to list
+  //       .each(function (index, element) {
+  //         validWords.push($(element).text());
+  //       });
+  //     //send a json response of the list
+  //     res.json(validWords);
+  //   });
+});
+
+function scrapeWords(res, numletters) {
+  let letters = getRoundCharacters(numletters);
 
   //make call to dictionary api
-  fetch(`https://www.anagrammer.com/word-unscrambler/${letters}`)
+  fetch(`https://www.anagrammer.com/word-unscrambler/${letters.join("")}`)
     .then((response) => response.text())
     .then((siteText) => {
       const $ = cheerio.load(siteText);
@@ -39,10 +115,17 @@ app.get("/start", (req, res) => {
         .each(function (index, element) {
           validWords.push($(element).text());
         });
-      //send a json response of the list
-      res.json(validWords);
+
+      validWords = validWords.filter((item) => item.length > 2);
+
+      if (validWords.length > 1) {
+        //send a json response of the list
+        res.json({ letters: letters, words: validWords });
+      } else {
+        scrapeWords(res, numletters);
+      }
     });
-});
+}
 
 // get the high scores from the database object. Add a query of ?name=...
 // to get only the high scores with that name
