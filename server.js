@@ -5,14 +5,15 @@ const app = express();
 const bodyParser = require("body-parser");
 const fetch = require("node-fetch");
 const cheerio = require("cheerio");
+const MongoClient = require("mongodb").MongoClient;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-const PORT = process.env.PORT !== undefined ? process.env.PORT : 3000;
+const uri = `mongodb+srv://${MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.isdmt.mongodb.net/worseWordScapes.high_scores?retryWrites=true&w=majority`;
+const client = new MongoClient(uri, { useNewUrlParser: true });
 
-// super simple 'database'
-const database = [];
+const PORT = process.env.PORT !== undefined ? process.env.PORT : 3000;
 
 const letterFrequencies = {
   E: 0.1202,
@@ -111,22 +112,31 @@ function scrapeWords(res, numletters) {
 // get the high scores from the database object. Add a query of ?name=...
 // to get only the high scores with that name
 app.get("/scores", (req, res) => {
-  let returning = database.slice();
+  client.connect((err) => {
+    const collection = client.db("worseWordScapes").collection("high_scores");
+    // perform actions on the collection object
+    collection
+      .find({})
+      .toArray()
+      .then((data) => res.json(filterQuery(req.query, data)));
+  });
+});
 
-  if (req.query.hasOwnProperty("sort")) {
+function filterQuery(query, returning) {
+  if (query.hasOwnProperty("sort")) {
     returning = sortDatabaseBy(returning, req.query.sort);
   } else {
     returning = sortDatabaseBy(returning, "high_score");
   }
 
-  if (req.query.hasOwnProperty("name")) {
-    const name = req.query.name;
+  if (query.hasOwnProperty("name")) {
+    const name = query.name;
 
     returning = returning.filter((item) => item.name === name);
   }
 
-  if (req.query.hasOwnProperty("limit")) {
-    let limit = parseInt(req.query.limit);
+  if (query.hasOwnProperty("limit")) {
+    let limit = parseInt(query.limit);
     limit = Number.isNaN(limit)
       ? 0
       : limit < 0
@@ -137,8 +147,8 @@ app.get("/scores", (req, res) => {
     returning = returning.slice(0, limit);
   }
 
-  return res.json(returning);
-});
+  return returning;
+}
 
 function sortDatabaseBy(db, target) {
   let returning;
@@ -183,14 +193,25 @@ app.post("/scores", (req, res) => {
       typeof newScore.high_score === "number" &&
       typeof newScore.date === "string"
     ) {
-      database.push(newScore);
-      return res.status(200).json("Complete");
-    }
-  }
+      try {
+        client.connect((err) => {
+          const collection = client
+            .db("worseWordScapes")
+            .collection("high_scores");
 
-  return res
-    .status(400)
-    .json(
-      "Expected a single object of {name:name, high_score:number, date:date}"
-    );
+          collection
+            .insertOne(newScore)
+            .then(() => res.status(200).json("Complete"));
+        });
+      } catch (err) {
+        console.log(err);
+      }
+    }
+  } else {
+    res
+      .status(400)
+      .json(
+        "Expected a single object of {name:name, high_score:number, date:date}"
+      );
+  }
 });
