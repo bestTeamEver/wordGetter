@@ -76,25 +76,6 @@ app.get("/start", (req, res) => {
   //get letters being used from the query
   let letters = req.query.letters;
   scrapeWords(res, letters);
-
-  // //make call to dictionary api
-  // fetch(`https://www.anagrammer.com/word-unscrambler/${letters}`)
-  //   .then((response) => response.text())
-  //   .then((siteText) => {
-  //     const $ = cheerio.load(siteText);
-
-  //     let validWords = [];
-  //     // in the div with class = vissible-sm
-  //     $('div[class="vissible-sm"]')
-  //       //find the <a> tags in the elements with class = r
-  //       .find(".r > a")
-  //       //for each <a> tag push the text content to list
-  //       .each(function (index, element) {
-  //         validWords.push($(element).text());
-  //       });
-  //     //send a json response of the list
-  //     res.json(validWords);
-  //   });
 });
 
 function scrapeWords(res, numletters) {
