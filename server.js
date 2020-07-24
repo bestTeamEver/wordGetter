@@ -10,8 +10,11 @@ const MongoClient = require("mongodb").MongoClient;
 app.use(cors());
 app.use(bodyParser.json());
 
-const uri = `mongodb+srv://${MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.isdmt.mongodb.net/worseWordScapes.high_scores?retryWrites=true&w=majority`;
-const client = new MongoClient(uri, { useNewUrlParser: true });
+const uri = `mongodb+srv://${process.env.MONGODB_USERNAME}:${process.env.MONGODB_PASSWORD}@cluster0.isdmt.mongodb.net/worseWordScapes.high_scores?retryWrites=true&w=majority`;
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
 const PORT = process.env.PORT !== undefined ? process.env.PORT : 3000;
 
